@@ -170,7 +170,7 @@ func (r *postgresRepo) CleanupOldEvents(ctx context.Context, olderThanDays int) 
 		where (status = 'published' and 
 		       published_at < now() - interval '1 day' * $1)
 		   or (status = 'failed' and
-		       retry_count >= max_retries
+		       retry_count >= max_retries and
 		       created_at < now() - interval '1 day' * $1)
 	`
 

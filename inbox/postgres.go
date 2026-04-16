@@ -9,11 +9,12 @@ import (
 )
 
 type postgresRepo struct {
-	pool *pgxpool.Pool
+	pool        *pgxpool.Pool
+	serviceName string
 }
 
-func NewPostgresRepository(pool *pgxpool.Pool) Repository {
-	return &postgresRepo{pool: pool}
+func NewPostgresRepository(pool *pgxpool.Pool, serviceName string) Repository {
+	return &postgresRepo{pool: pool, serviceName: serviceName}
 }
 
 func (r *postgresRepo) MarkEventProcessedTx(ctx context.Context, tx pgx.Tx, eventID, eventType string) error {
@@ -23,7 +24,7 @@ func (r *postgresRepo) MarkEventProcessedTx(ctx context.Context, tx pgx.Tx, even
 	on conflict (event_id) do nothing
     `
 
-	result, err := tx.Exec(ctx, sql, eventID, eventType, "transaction_service")
+	result, err := tx.Exec(ctx, sql, eventID, eventType, r.serviceName)
 	if err != nil {
 		return fmt.Errorf("failed to mark event as processed: %w", err)
 	}
