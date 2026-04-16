@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/mibrgmv/payment-system/shared/kafka"
-	"github.com/mibrgmv/payment-system/shared/outbox"
-	"github.com/mibrgmv/payment-system/shared/postgres"
-	"github.com/mibrgmv/payment-system/shared/retry"
+	"github.com/mibrgmv/go-platform/kafka"
+	"github.com/mibrgmv/go-platform/outbox"
+	"github.com/mibrgmv/go-platform/postgres"
+	"github.com/mibrgmv/go-platform/workerpool"
 )
 
 type PublisherConfig struct {
@@ -31,7 +31,7 @@ type Publisher struct {
 	kafkaProducer kafka.Producer
 	db            *postgres.DB
 	config        PublisherConfig
-	retryCalc     *retry.Calculator
+	retryCalc     *retryCalculator
 }
 
 func NewPublisher(
@@ -41,10 +41,10 @@ func NewPublisher(
 	db *postgres.DB,
 	config PublisherConfig,
 ) *Publisher {
-	retryCalc := retry.NewCalculator(
+	retryCalc := newRetryCalculator(
 		config.BaseRetryDelay,
 		config.MaxRetryBackoff,
-		retry.WithJitterFactor(config.RetryJitterFactor),
+		config.RetryJitterFactor,
 	)
 
 	return &Publisher{
@@ -121,30 +121,29 @@ func (p *Publisher) ProcessBatch(ctx context.Context, getEventsFunc func(context
 	}
 
 	workerCount := min(len(events), p.config.WorkerCount)
-	jobs := make(chan outbox.Event, len(events))
-	results := make(chan error, len(events))
-	for w := 0; w < workerCount; w++ {
-		go func() {
-			for event := range jobs {
-				results <- p.ProcessSingle(ctx, event)
-			}
-		}()
-	}
+	pool := workerpool.New(ctx, workerCount)
 
-	for _, event := range events {
-		jobs <- event
+	results := make([]<-chan error, len(events))
+	for i, event := range events {
+		event := event
+		results[i] = pool.Submit(func() error {
+			return p.ProcessSingle(ctx, event)
+		})
 	}
-	close(jobs)
 
 	successCount := 0
-	for i := 0; i < len(events); i++ {
-		if err := <-results; err != nil {
+	for _, ch := range results {
+		if ch == nil {
+			continue
+		}
+		if err := <-ch; err != nil {
 			log.Printf("Failed to process event: %v", err)
 		} else {
 			successCount++
 		}
 	}
 
+	pool.Shutdown()
 	log.Printf("Processed %d events from outbox (%d successful)", len(events), successCount)
 	return nil
 }
@@ -166,7 +165,7 @@ func (p *Publisher) ProcessSingle(ctx context.Context, event outbox.Event) error
 
 		handlerErr := handler.HandleEvent(ctx, lockedEvent, p.kafkaProducer)
 		if handlerErr != nil {
-			nextRetryAt := p.retryCalc.CalculateNextRetry(lockedEvent.RetryCount)
+			nextRetryAt := p.retryCalc.calculateNextRetry(lockedEvent.RetryCount)
 
 			markErr := p.outboxRepo.MarkEventAsFailedTx(ctx, tx, event.EventID, handlerErr.Error(), nextRetryAt)
 			if markErr != nil {

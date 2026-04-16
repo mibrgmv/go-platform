@@ -8,9 +8,9 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/mibrgmv/payment-system/shared/events"
-	"github.com/mibrgmv/payment-system/shared/inbox"
-	"github.com/mibrgmv/payment-system/shared/postgres"
+	"github.com/mibrgmv/go-platform/events"
+	"github.com/mibrgmv/go-platform/inbox"
+	"github.com/mibrgmv/go-platform/postgres"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"

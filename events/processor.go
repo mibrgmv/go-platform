@@ -7,9 +7,9 @@ import (
 	"log"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/mibrgmv/payment-system/shared/inbox"
-	"github.com/mibrgmv/payment-system/shared/kafka"
-	"github.com/mibrgmv/payment-system/shared/postgres"
+	"github.com/mibrgmv/go-platform/inbox"
+	"github.com/mibrgmv/go-platform/kafka"
+	"github.com/mibrgmv/go-platform/postgres"
 	kafkago "github.com/segmentio/kafka-go"
 )
 

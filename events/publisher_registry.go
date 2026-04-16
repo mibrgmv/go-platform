@@ -4,8 +4,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/mibrgmv/payment-system/shared/kafka"
-	"github.com/mibrgmv/payment-system/shared/outbox"
+	"github.com/mibrgmv/go-platform/kafka"
+	"github.com/mibrgmv/go-platform/outbox"
 )
 
 type PublisherEventHandler interface {
