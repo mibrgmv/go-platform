@@ -59,7 +59,7 @@ func setupTestContainer(t *testing.T) (*pgxpool.Pool, func()) {
 	ctx := context.Background()
 
 	pgContainer, err := postgrestest.Run(ctx,
-		"postgres:15-alpine",
+		"postgres:16-alpine",
 		postgrestest.WithDatabase("testdb"),
 		postgrestest.WithUsername("testuser"),
 		postgrestest.WithPassword("testpass"),

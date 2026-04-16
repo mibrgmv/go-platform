@@ -5,17 +5,25 @@ import (
 	"time"
 )
 
+type EventStatus string
+
+const (
+	EventStatusPending   EventStatus = "pending"
+	EventStatusFailed    EventStatus = "failed"
+	EventStatusPublished EventStatus = "published"
+)
+
 type Event struct {
-	EventID      string     `json:"event_id"`
-	EventType    string     `json:"event_type"`
-	RawPayload   []byte     `json:"-"`
-	CreatedAt    time.Time  `json:"created_at"`
-	Topic        string     `json:"topic"`
-	Status       string     `json:"status"`
-	RetryCount   int        `json:"retry_count"`
-	MaxRetries   int        `json:"max_retries"`
-	ErrorMessage *string    `json:"error_message"`
-	NextRetryAt  *time.Time `json:"next_retry_at"`
+	EventID      string      `json:"event_id"`
+	EventType    string      `json:"event_type"`
+	RawPayload   []byte      `json:"-"`
+	CreatedAt    time.Time   `json:"created_at"`
+	Topic        string      `json:"topic"`
+	Status       EventStatus `json:"status"`
+	RetryCount   int         `json:"retry_count"`
+	MaxRetries   int         `json:"max_retries"`
+	ErrorMessage *string     `json:"error_message"`
+	NextRetryAt  *time.Time  `json:"next_retry_at"`
 }
 
 type EventOptions struct {
@@ -34,7 +42,7 @@ func NewEvent(eventID, eventType, topic string, payload interface{}, opts ...Eve
 		Topic:      topic,
 		RawPayload: payloadBytes,
 		CreatedAt:  time.Now(),
-		Status:     "pending",
+		Status:     EventStatusPending,
 		MaxRetries: 5,
 	}
 

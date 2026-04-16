@@ -2,7 +2,6 @@ package events_test
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 	"time"
 
@@ -32,12 +31,7 @@ func (h *TestEventHandler) HandleEvent(ctx context.Context, event *outbox.Event,
 
 	h.processedEvents = append(h.processedEvents, event.EventID)
 
-	var payload map[string]interface{}
-	if err := json.Unmarshal(event.RawPayload, &payload); err != nil {
-		return err
-	}
-
-	return producer.Produce(ctx, event.Topic, event.EventID, payload)
+	return producer.Produce(ctx, event.Topic, event.EventID, event.RawPayload)
 }
 
 func (h *TestEventHandler) GetEventType() string {
@@ -48,7 +42,7 @@ type MockProducer struct {
 	producedEvents []string
 }
 
-func (m *MockProducer) Produce(ctx context.Context, topic, key string, value interface{}) error {
+func (m *MockProducer) Produce(ctx context.Context, topic, key string, value []byte) error {
 	m.producedEvents = append(m.producedEvents, key)
 	return nil
 }
@@ -61,7 +55,7 @@ func setupTestDB(t *testing.T) (*pgxpool.Pool, func()) {
 	ctx := context.Background()
 
 	pgContainer, err := postgrestest.Run(ctx,
-		"postgres:15-alpine",
+		"postgres:16-alpine",
 		postgrestest.WithDatabase("testdb"),
 		postgrestest.WithUsername("testuser"),
 		postgrestest.WithPassword("testpass"),
@@ -207,19 +201,18 @@ func TestPublisher_ProcessSingle_RetryOnFailure(t *testing.T) {
 	err = publisher.ProcessSingle(ctx, *outboxEvent)
 	assert.NoError(t, err)
 
-	retryEvents, err := outboxRepo.GetRetryEvents(ctx, 10)
+	var status string
+	var retryCount int
+	var nextRetryAt *time.Time
+	err = pool.QueryRow(ctx,
+		`select status, retry_count, next_retry_at from outbox_events where event_id = $1`,
+		eventID,
+	).Scan(&status, &retryCount, &nextRetryAt)
 	require.NoError(t, err)
 
-	found := false
-	for _, e := range retryEvents {
-		if e.EventID == eventID && e.Status == "failed" {
-			found = true
-			assert.NotNil(t, e.NextRetryAt)
-			assert.Greater(t, e.RetryCount, 0)
-			break
-		}
-	}
-	assert.True(t, found, "Event should be in retry events after failure")
+	assert.Equal(t, string(outbox.EventStatusFailed), status)
+	assert.Equal(t, 1, retryCount)
+	assert.NotNil(t, nextRetryAt)
 }
 
 func TestPublisher_ProcessSingle_NoHandler(t *testing.T) {
@@ -264,7 +257,7 @@ func TestPublisher_ProcessSingle_NoHandler(t *testing.T) {
 
 	found := false
 	for _, e := range pendingEvents {
-		if e.EventID == eventID && e.Status == "pending" {
+		if e.EventID == eventID && e.Status == outbox.EventStatusPending {
 			found = true
 			break
 		}

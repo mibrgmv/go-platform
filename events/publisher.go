@@ -165,7 +165,7 @@ func (p *Publisher) ProcessSingle(ctx context.Context, event outbox.Event) error
 
 		handlerErr := handler.HandleEvent(ctx, lockedEvent, p.kafkaProducer)
 		if handlerErr != nil {
-			nextRetryAt := p.retryCalc.calculateNextRetry(lockedEvent.RetryCount)
+			nextRetryAt := p.retryCalc.calculateNextRetry(lockedEvent.RetryCount + 1)
 
 			markErr := p.outboxRepo.MarkEventAsFailedTx(ctx, tx, event.EventID, handlerErr.Error(), nextRetryAt)
 			if markErr != nil {
