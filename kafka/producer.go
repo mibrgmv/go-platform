@@ -28,7 +28,7 @@ func NewProducer(cfg ProducerConfig) Producer {
 		Balancer:               &kafka.LeastBytes{},
 		BatchTimeout:           10 * time.Millisecond,
 		BatchSize:              100,
-		Async:                  true,
+		Async:                  false,
 		AllowAutoTopicCreation: true,
 		Logger:                 kafka.LoggerFunc(log.Printf),
 		ErrorLogger:            kafka.LoggerFunc(log.Printf),
