@@ -24,13 +24,14 @@ type producer struct {
 
 func NewProducer(cfg ProducerConfig) Producer {
 	writer := &kafka.Writer{
-		Addr:         kafka.TCP(cfg.Brokers...),
-		Balancer:     &kafka.LeastBytes{},
-		BatchTimeout: 10 * time.Millisecond,
-		BatchSize:    100,
-		Async:        true,
-		Logger:       kafka.LoggerFunc(log.Printf),
-		ErrorLogger:  kafka.LoggerFunc(log.Printf),
+		Addr:                   kafka.TCP(cfg.Brokers...),
+		Balancer:               &kafka.LeastBytes{},
+		BatchTimeout:           10 * time.Millisecond,
+		BatchSize:              100,
+		Async:                  true,
+		AllowAutoTopicCreation: true,
+		Logger:                 kafka.LoggerFunc(log.Printf),
+		ErrorLogger:            kafka.LoggerFunc(log.Printf),
 	}
 
 	return &producer{writer: writer}
